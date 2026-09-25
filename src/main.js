@@ -3,7 +3,7 @@ import './style.css';
 import { applyRoomLight, camera, controls, homeCameraPosition, render, resize } from './core/stage.js';
 import { CANDLE_HOME, S } from './core/state.js';
 import { $, clamp, damp, ease, noise1, toast, tween, updateTweens } from './core/util.js';
-import { initPhysics, onImpact, stepPhysics } from './physics/physics.js';
+import { initPhysics, onImpact, stepPhysics, overlaps, allBodies, world as physicsWorld } from './physics/physics.js';
 import { updateParticles } from './fx/particles.js';
 import { updateFlames } from './fx/flame.js';
 import { fire, updateFireLights } from './fire/fire.js';
@@ -15,7 +15,7 @@ import { Candle } from './world/candle.js';
 import { catalogById } from './items/catalog.js';
 import { clearItems, spawnItem } from './items/spawn.js';
 import { clouds, puddles, updateGasAndDust } from './items/effects.js';
-import { updateHand, updateHandControls } from './interaction/hand.js';
+import { dropHeld, strikeMatch, updateHand, updateHandControls } from './interaction/hand.js';
 import './interaction/pointer.js';
 import { actions, initUI, select, updateUI } from './ui/ui.js';
 
@@ -204,7 +204,7 @@ boot().catch((err) => {
 // Handy for debugging and automated checks.
 window.__sim = {
   S,
-  step(n, dt = 1 / 60) { paused = true; for (let i = 0; i < n; i++) step(dt); render(dt); },
+  step(n, dt = 1 / 60, draw = true) { paused = true; for (let i = 0; i < n; i++) step(dt); if (draw) render(dt); },
   resume() { paused = false; },
   spawn: spawnItem,
   camera,
@@ -221,7 +221,12 @@ window.__sim = {
     setDrawer(true);
   },
   takeNext: () => import('./interaction/hand.js').then((h) => h.takeNext()),
+  drop: () => dropHeld(),
+  strike: () => strikeMatch(),
   fire,
+  overlaps,
+  bodies: allBodies,
+  get world() { return physicsWorld; },
   puddles,
   clouds,
   /** Hold a test flame (like a lighter) at a point for `sec` seconds of sim time. */

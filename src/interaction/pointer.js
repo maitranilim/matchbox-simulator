@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { camera, controls, renderer } from '../core/stage.js';
 import { S } from '../core/state.js';
 import { clamp, _v1 } from '../core/util.js';
-import { onPreStep } from '../physics/physics.js';
+import { groundBelow, onPreStep } from '../physics/physics.js';
 import { sound } from '../audio/sound.js';
 import { boxMeshes, drawerMeshes, setDrawer, boxGroup } from '../world/matchbox.js';
 import { pickMatch, updateHandControls } from './hand.js';
@@ -58,7 +58,10 @@ function pick() {
 function startGrab(item, point) {
   if (!item.phys || !item.phys.body) return;
   const local = item.group.worldToLocal(point.clone());
-  S.grab = { item, local, height: point.y + 2.5, target: point.clone(), prevDamp: item.phys.body.angularDamping() };
+  // How far the grab point sits above the item's lowest point, so the item
+  // can be carried up and over whatever it is moved across.
+  const bottom = new THREE.Box3().setFromObject(item.group).min.y;
+  S.grab = { item, local, height: point.y + 2.5, clear: point.y - bottom + 0.6, target: point.clone(), prevDamp: item.phys.body.angularDamping() };
   item.phys.body.setAngularDamping(5);
   item.phys.body.wakeUp();
   controls.enabled = false;
@@ -82,6 +85,10 @@ function updateGrabTarget() {
   const p = raycaster.ray.intersectPlane(plane, _v1);
   if (p) {
     g.target.set(clamp(p.x, -40, 40), g.height, clamp(p.z, -30, 14));
+    // Rise over anything underneath (a candle, the stove), like a hand
+    // lifting a thing over an obstacle rather than pushing it through.
+    const floor = groundBelow({ x: g.target.x, y: 60, z: g.target.z }, g.item.phys);
+    g.target.y = Math.min(40, Math.max(g.target.y, floor + g.clear));
   }
 }
 

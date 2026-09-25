@@ -102,7 +102,9 @@ export class Candle {
 
   heatFrom(dt) {
     if (this.lit || this.height <= 0.5) { this.heatProg = 0; return; }
-    const e = fire.exposure(this.wickTip(_v1), this);
+    const tip = this.wickTip(_v1);
+    // A flame actually touching the wick lights it quickly, as it does for real.
+    const e = fire.exposure(tip, this) + (fire.touching(tip, this, 0.05) ? 1.2 : 0);
     this.heatProg = Math.max(0, this.heatProg + dt * (e - 0.3));
     if (this.heatProg > 0.5) { this.heatProg = 0; this.ignite(); }
   }

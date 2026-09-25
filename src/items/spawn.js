@@ -53,8 +53,14 @@ export function spawnItem(id, at) {
     const quat = new THREE.Quaternion().setFromEuler(new THREE.Euler(rand(-tilt, tilt), rand(0, Math.PI * 2), rand(-tilt, tilt)));
     item.spawn(new THREE.Vector3(spot.x, y, spot.z), { quat, angvel: { x: rand(-tilt, tilt), y: rand(-0.5, 0.5), z: rand(-tilt, tilt) } });
   }
+  // Never start inside something else (a pan handle in a stove, say).
+  item.phys.liftClear();
   S.items.push(item);
-  if (!at) frameInView(new THREE.Vector3(spot.x, 4, spot.z));
+  if (!at) {
+    // Make sure its top is in view too (the stove's burner is 12 cm up).
+    const bb = new THREE.Box3().setFromObject(item.group);
+    frameInView(new THREE.Vector3(spot.x, Math.max(4, bb.max.y), spot.z));
+  }
   return item;
 }
 

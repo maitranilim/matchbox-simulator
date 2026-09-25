@@ -20,7 +20,7 @@ BOX.drawerDepth = BOX.depth - 2 * BOX.wall - 0.06;
 BOX.drawerHeight = BOX.height - 2 * BOX.wall - 0.08;
 export const STRIP = { x0: -2.45, x1: 2.45, y0: 0.2, y1: 1.3, z: BOX.depth / 2 + 0.085 };
 
-export const MATCH = { len: 4.2, thick: 0.11, headR: 0.1 };
+export const MATCH = { len: 4.2, thick: 0.11, headR: 0.1, mass: 0.09 };
 export const ASHTRAY = { x: -5.3, z: -1.6, rIn: 1.9, rRim: 2.32 };
 export const CANDLE_HOME = new THREE.Vector3(6.6, 0, -3.3);
 
@@ -47,6 +47,11 @@ export const S = {
   contactPrev: false,
   strikeEnergy: 0,
   strikeThresh: 1.2,
+  liftQuat: new THREE.Quaternion(),
+  clearOfBox: true,
+  autoStrike: null,
+  autoStrikeQueued: false,
+  assist: null,
   strokeCounted: false,
   lastUV: null,
   blowT: 0,

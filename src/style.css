@@ -28,6 +28,7 @@
     transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s; }
   #panel.hidden { transform: translateX(calc(100% + 24px)); opacity: 0; pointer-events: none; }
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .row .wide { grid-column: 1 / -1; }
   button { appearance: none; border: 1px solid var(--line); background: rgba(255,255,255,0.05); color: var(--text);
     font: inherit; font-size: 12.5px; padding: 8px 8px; border-radius: 9px; cursor: pointer;
     transition: background .15s, border-color .15s, transform .08s; white-space: nowrap; }

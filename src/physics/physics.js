@@ -25,7 +25,7 @@ const preStep = new Set();
 const impactListeners = [];
 
 // Collision groups (membership << 16 | filter).
-export const GROUP = { STATIC: 0x0001, DYNAMIC: 0x0002, HELD: 0x0004, DEBRIS: 0x0008 };
+export const GROUP = { STATIC: 0x0001, DYNAMIC: 0x0002, HELD: 0x0004, DEBRIS: 0x0008, BOX: 0x0010 };
 export const groups = (member, filter) => (member << 16) | filter;
 export const ALL = 0xffff;
 
@@ -37,7 +37,13 @@ export async function initPhysics() {
   world = new R.World({ x: 0, y: -GRAVITY, z: 0 });
   world.lengthUnit = 100; // 100 units per metre
   world.timestep = STEP;
-  world.numSolverIterations = 6;
+  // Small, light things (a 0.1 g match against a 6 g candle) need a stiffer
+  // solve than the defaults: more iterations, and contacts corrected down to
+  // 0.2 mm instead of 1 mm so nothing visibly sinks into anything else.
+  world.numSolverIterations = 8;
+  world.integrationParameters.normalizedAllowedLinearError = 0.0002;
+  // Fast thin things (a flicked match) can hit several surfaces in one step.
+  world.maxCcdSubsteps = 4;
   events = new R.EventQueue(true);
 }
 
@@ -186,6 +192,46 @@ export class PhysicsBody {
   }
 
   get mass() { return this.body.mass(); }
+
+  /**
+   * Does any collider overlap another body's? `filter` is a collision-group
+   * mask of what counts. Checked shape against shape directly rather than
+   * through the broad phase, so bodies created this frame are seen too.
+   */
+  overlapping(filter = ALL) {
+    world.propagateModifiedBodyPositionsToColliders();
+    for (const other of tracked) {
+      if (other === this || !other.body) continue;
+      for (const o of other.colliders) {
+        if (o.isSensor() || !((o.collisionGroups() >>> 16) & filter) || !o.isEnabled()) continue;
+        const op = o.translation(), orot = o.rotation();
+        for (const c of this.colliders) {
+          if (!c.isSensor() && c.intersectsShape(o.shape, op, orot)) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Nudge the body straight up until none of its colliders overlap anything
+   * else, so a new object never starts inside another one. Returns the lift.
+   */
+  liftClear(maxLift = 200, step = 0.25) {
+    const b = this.body;
+    const start = b.translation();
+    let lift = 0;
+    while (lift < maxLift && this.overlapping()) {
+      lift += step;
+      b.setTranslation({ x: start.x, y: start.y + lift, z: start.z }, true);
+    }
+    if (lift > 0) {
+      this.object.position.y += lift;
+      this.prevPos.y += lift;
+      this.currPos.y += lift;
+    }
+    return lift;
+  }
 
   setGroups(g) { for (const c of this.colliders) c.setCollisionGroups(g); }
 
@@ -348,3 +394,32 @@ export function groundBelow(p, exclude = null) {
   const hit = raycast({ x: p.x, y: p.y + 0.01, z: p.z }, { x: 0, y: -1, z: 0 }, 200, exclude);
   return hit ? hit.point.y : 0;
 }
+
+/**
+ * Every pair of touching bodies that overlap by more than `minDepth` cm,
+ * deepest first: [{ a, b, depth }]. Used by the debug hooks and tests.
+ */
+export function overlaps(minDepth = 0.02) {
+  const deepest = new Map();
+  for (const pb of tracked) {
+    if (pb.type !== 'dynamic') continue;
+    for (const c of pb.colliders) {
+      if (c.isSensor()) continue;
+      world.contactPairsWith(c, (o) => {
+        const other = ownerByCollider.get(o.handle);
+        if (!other || other === pb || o.isSensor()) return;
+        world.contactPair(c, o, (m) => {
+          for (let i = 0; i < m.numContacts(); i++) {
+            const depth = -m.contactDist(i);
+            if (depth <= minDepth) continue;
+            const key = [pb, other].map((x) => x.body?.handle).sort().join(':');
+            if ((deepest.get(key)?.depth ?? 0) < depth) deepest.set(key, { a: pb, b: other, depth });
+          }
+        });
+      });
+    }
+  }
+  return [...deepest.values()].sort((x, y) => y.depth - x.depth);
+}
+
+export function allBodies() { return [...tracked]; }

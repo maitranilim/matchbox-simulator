@@ -11,6 +11,13 @@ import { drawer } from './matchbox.js';
 import { addScorch, ashtrayHeight } from './table.js';
 
 const GN = MATCH.len;
+
+// While being slid out of the box a match ignores the box itself (the fingers
+// guide it past the card), but it still bumps into everything else.
+function matchGroups(held) {
+  if (held === 'lifting') return groups(GROUP.HELD, ALL & ~GROUP.BOX);
+  return held ? groups(GROUP.HELD, ALL) : groups(GROUP.DYNAMIC, ALL);
+}
 const woodTex = (() => {
   const c = document.createElement('canvas');
   c.width = 64; c.height = 512;
@@ -127,7 +134,10 @@ export class Match {
   }
   canIgnite() { return !this.lit && this.headState !== 'crumbled' && this.burn < GN - 0.8 && this.state !== 'lifting'; }
 
-  /** Give the match a rigid body (it has left the box). */
+  /**
+   * Give the match a rigid body (it has left the box). `held` is false, true,
+   * or 'lifting' while fingers slide it out from between the others.
+   */
   makePhysical(held) {
     if (this.phys) return;
     scene.attach(this.group);
@@ -142,13 +152,15 @@ export class Match {
       linearDamping: 0.3,
       angularDamping: 0.6,
       owner: this,
-      groups: held ? groups(GROUP.HELD, ALL) : groups(GROUP.DYNAMIC, ALL),
+      groups: matchGroups(held),
     });
+    // A real safety match (2 mm aspen stick plus head) weighs about 0.09 g.
+    this.phys.setMass(MATCH.mass);
   }
 
   setHeld(held) {
     if (!this.phys) return;
-    this.phys.setGroups(held ? groups(GROUP.HELD, ALL) : groups(GROUP.DYNAMIC, ALL));
+    this.phys.setGroups(matchGroups(held));
     this.phys.body.setAngularDamping(held ? 8 : 0.6);
     this.phys.body.setLinearDamping(held ? 2 : 0.3);
   }

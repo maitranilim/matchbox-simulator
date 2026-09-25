@@ -10,7 +10,7 @@ import { Candle } from '../world/candle.js';
 import { spawnItem } from '../items/spawn.js';
 import { setDrawer } from '../world/matchbox.js';
 import { inBox } from '../world/match.js';
-import { dropHeld, takeNext } from '../interaction/hand.js';
+import { dropHeld, strikeMatch, takeNext } from '../interaction/hand.js';
 import { onItemSelect, onTilt, setTilt } from '../interaction/pointer.js';
 import { puddles } from '../items/effects.js';
 
@@ -206,9 +206,12 @@ export function updateUI(dt) {
   if (S.grab) hint = `Moving the ${S.grab.item.name.toLowerCase()} · <em>scroll</em> to lift or lower · let go to drop`;
   else if (m) {
     if (m.state === 'lifting') hint = 'Picking up…';
-    else if (m.lit) hint = 'Burning! <em>Hold the button</em> to press the flame against things · <em>scroll</em> to tilt · <em>B</em> blow · <em>Space</em> drop';
+    else if (m.lit && S.assist === 'wick') hint = 'Holding the flame to the wick…';
+    else if (m.lit && S.assist === 'burner') hint = 'Holding the flame to the burner…';
+    else if (m.lit) hint = 'Burning! Point at a wick, a burner or anything flammable · <em>scroll</em> to tilt · <em>B</em> blow · <em>Space</em> drop';
     else if (m.headState === 'crumbled') hint = 'The head crumbled. Press <em>Space</em> to drop it';
-    else if (m.headState === 'fresh') hint = S.pointerType === 'touch' ? 'Touch the brown strip and <em>swipe fast</em> across it to strike' : 'Hold the mouse on the brown strip and <em>swipe fast</em> across it to strike';
+    else if (m.headState === 'fresh') hint = S.pointerType === 'touch' ? 'Touch the brown strip and <em>swipe</em> across it to strike, or tap <em>Strike</em>' : 'Hold the mouse on the brown strip and <em>swipe</em> across it to strike, or press <em>S</em>';
+    else if (S.assist === 'flame') hint = 'Relighting it in the flame…';
     else hint = m.burn < MATCH.len - 0.8 ? 'Spent. Relight it in another flame, or press <em>Space</em> to drop it' : 'Burnt out. Press <em>Space</em> to drop it';
   } else {
     if (S.drawerOpen < 0.5) hint = fresh ? `Click the matchbox to slide the drawer open <em>(or press N)</em> · ${CUPBOARD_HINT}` : 'Box is empty. Press <em>R</em> to refill';
@@ -254,6 +257,7 @@ export function initUI() {
   $('ins-close').onclick = () => select(null);
   $('b-box').onclick = () => setDrawer(S.drawerOpen < 0.5);
   $('b-take').onclick = takeNext;
+  $('b-strike').onclick = strikeMatch;
   $('b-blow').onclick = () => actions.blow();
   $('b-drop').onclick = () => (S.held ? dropHeld() : toast('You are not holding a match.'));
   $('b-refill').onclick = () => actions.refill();
@@ -278,6 +282,7 @@ export function initUI() {
     else if (k === 'b') actions.blow();
     else if (k === 'o') setDrawer(S.drawerOpen < 0.5);
     else if (k === 'n') takeNext();
+    else if (k === 's') strikeMatch();
     else if (k === 'r') actions.refill();
     else if (k === 'c') actions.cleanUp();
     else if (k === 't') toggleSlow();

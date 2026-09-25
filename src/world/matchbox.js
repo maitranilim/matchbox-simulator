@@ -142,7 +142,7 @@ export function initMatchboxPhysics() {
     { type: 'box', hx: L / 2, hy: H / 2, hz: T / 2, pos: [0, H / 2, -D / 2 + T / 2] },
   ];
   // Held down on the table by your other hand, so the shell does not move.
-  matchbox.shell = new PhysicsBody(boxGroup, { type: 'fixed', shapes, friction: 0.7, owner: matchbox });
+  matchbox.shell = new PhysicsBody(boxGroup, { type: 'fixed', shapes, friction: 0.7, owner: matchbox, groups: groups(GROUP.BOX, ALL) });
   const trayShapes = [
     { type: 'box', hx: DL / 2, hy: W / 2, hz: DD / 2, pos: [0, W / 2, 0] },
     { type: 'box', hx: W / 2, hy: DH / 2, hz: DD / 2, pos: [DL / 2 - W / 2, DH / 2, 0] },
@@ -150,7 +150,7 @@ export function initMatchboxPhysics() {
     { type: 'box', hx: DL / 2, hy: DH / 2, hz: W / 2, pos: [0, DH / 2, DD / 2 - W / 2] },
     { type: 'box', hx: DL / 2, hy: DH / 2, hz: W / 2, pos: [0, DH / 2, -DD / 2 + W / 2] },
   ];
-  matchbox.tray = new PhysicsBody(drawer, { type: 'kinematic', shapes: trayShapes, friction: 0.7, owner: matchbox });
+  matchbox.tray = new PhysicsBody(drawer, { type: 'kinematic', shapes: trayShapes, friction: 0.7, owner: matchbox, groups: groups(GROUP.BOX, ALL) });
   // The loose matches in the tray act as one solid "bed" while any remain.
   matchbox.bed = matchbox.tray.addShape({ type: 'box', hx: DL / 2 - 0.3, hy: 0.13, hz: DD / 2 - 0.1, pos: [0, W + 0.13, 0] });
 }
