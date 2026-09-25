@@ -319,6 +319,64 @@ const _q2 = new THREE.Quaternion();
 export function onPreStep(fn) { preStep.add(fn); return () => preStep.delete(fn); }
 export function onImpact(fn) { impactListeners.push(fn); }
 
+/**
+ * Heavy-on-light support. The solver's contacts are springy in proportion
+ * to the lighter body's mass, so a 480 g pan landing on a 14 g rag pressed
+ * it several millimetres into the table and sank into it. While a light
+ * thing lies still and something at least three times heavier comes down
+ * on top of it, the light one is made "dominant" (immovable towards the
+ * heavier one), so the load goes straight through it to the table and the
+ * heavy thing rests on its surface. Side-on pushes don't count, and once the
+ * light thing itself is moved (dragged, blasted) it switches straight back.
+ */
+const SUPPORT_RATIO = 3;
+// Hysteresis: settle below the first speed to switch on; only a real shove
+// above the second switches it off.
+const REST = { v: 6, w: 1 }, MOVING = { v: 30, w: 4 };
+let supportTick = 0;
+
+function slow(b, lim) {
+  const v = b.linvel(), w = b.angvel();
+  return v.x * v.x + v.y * v.y + v.z * v.z < lim.v * lim.v && w.x * w.x + w.y * w.y + w.z * w.z < lim.w * lim.w;
+}
+
+function updateSupport() {
+  for (const pb of tracked) {
+    if (pb.type !== 'dynamic' || !pb.body) continue;
+    const b = pb.body;
+    const was = b.dominanceGroup() > 0;
+    let supporting = false;
+    let sink = null;
+    if (slow(b, was ? MOVING : REST)) {
+      const m = b.mass();
+      for (const c of pb.colliders) {
+        if (supporting || c.isSensor()) continue;
+        world.contactPairsWith(c, (o) => {
+          if (o.isSensor()) return;
+          const other = ownerByCollider.get(o.handle);
+          if (!other || other === pb || other.type !== 'dynamic' || !other.body) return;
+          if (other.body.mass() < m * SUPPORT_RATIO) return;
+          // Within a centimetre of this body's upper side: it is coming
+          // down on it, or resting on it.
+          const hit = c.contactCollider(o, 1);
+          if (!hit || hit.normal1.y < 0.5) return;
+          supporting = true;
+          if (hit.distance < -0.03 && (!sink || hit.distance < sink.d)) sink = { body: other.body, d: hit.distance, n: hit.normal1 };
+        });
+      }
+    }
+    if (supporting !== was) {
+      b.setDominanceGroup(supporting ? 1 : 0);
+      b.wakeUp();
+      // If it had already sunk in before this kicked in, lift it back out.
+      if (supporting && sink) {
+        const t = sink.body.translation();
+        sink.body.setTranslation({ x: t.x + sink.n.x * -sink.d, y: t.y + sink.n.y * -sink.d, z: t.z + sink.n.z * -sink.d }, true);
+      }
+    }
+  }
+}
+
 /** Advance the world by `dt` of simulation time using fixed steps. */
 export function stepPhysics(dt) {
   accumulator = Math.min(accumulator + dt, STEP * MAX_STEPS);
@@ -329,6 +387,7 @@ export function stepPhysics(dt) {
       b.prevQuat.copy(b.currQuat);
     }
     for (const fn of preStep) fn(STEP);
+    if (++supportTick % 2 === 0) updateSupport();
     world.step(events);
     for (const b of tracked) {
       if (b.type !== 'dynamic') continue;
@@ -408,14 +467,13 @@ export function overlaps(minDepth = 0.02) {
       world.contactPairsWith(c, (o) => {
         const other = ownerByCollider.get(o.handle);
         if (!other || other === pb || o.isSensor()) return;
-        world.contactPair(c, o, (m) => {
-          for (let i = 0; i < m.numContacts(); i++) {
-            const depth = -m.contactDist(i);
-            if (depth <= minDepth) continue;
-            const key = [pb, other].map((x) => x.body?.handle).sort().join(':');
-            if ((deepest.get(key)?.depth ?? 0) < depth) deepest.set(key, { a: pb, b: other, depth });
-          }
-        });
+        // Measured afresh from the shapes: cached contact manifolds go stale
+        // while bodies sleep.
+        const hit = c.contactCollider(o, 0);
+        const depth = hit ? -hit.distance : 0;
+        if (depth <= minDepth) return;
+        const key = [pb, other].map((x) => x.body?.handle).sort().join(':');
+        if ((deepest.get(key)?.depth ?? 0) < depth) deepest.set(key, { a: pb, b: other, depth });
       });
     }
   }
