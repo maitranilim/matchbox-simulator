@@ -1,0 +1,21 @@
+{
+  "name": "matchbox-simulator",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A 3D matchbox and fire simulator in the browser, with real rigid-body physics and a cupboard of everyday things to burn.",
+  "author": "Nishan (https://github.com/maitranilim)",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.21.0",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "vite": "^8.3.1"
+  }
+}

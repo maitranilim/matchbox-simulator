@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Matchbox Simulator</title>
+<meta name="description" content="Strike a match, light a candle, and see how everyday things burn: paper, cloth, alcohol, oil, aerosol cans, flour and more, with real rigid-body physics." />
+<meta property="og:title" content="Matchbox Simulator" />
+<meta property="og:description" content="A 3D fire playground in your browser: strike matches and burn things from the cupboard." />
+<meta name="theme-color" content="#070605" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body>
+<div id="app"></div>
+<div class="vignette"></div>
+
+<div id="hud" class="glass">
+  <h1>Match<span>box</span></h1>
+  <div class="stats">
+    <span>Matches in box</span><b id="st-left">24</b>
+    <span>Strike attempts</span><b id="st-strikes">0</b>
+    <span>Lit</span><b id="st-lit">0</b>
+    <span>Things burning</span><b id="st-fires">0</b>
+  </div>
+</div>
+
+<div id="panel" class="glass">
+  <button id="b-cupboard" class="cupboard-btn">Open the cupboard<kbd>I</kbd></button>
+  <div class="sect">Matches</div>
+  <div class="row">
+    <button id="b-box">Open box<kbd>O</kbd></button>
+    <button id="b-take">Take match<kbd>N</kbd></button>
+    <button id="b-blow">Blow<kbd>B</kbd></button>
+    <button id="b-drop">Drop<kbd>Space</kbd></button>
+    <button id="b-refill">Refill<kbd>R</kbd></button>
+    <button id="b-clean">Clean up<kbd>C</kbd></button>
+  </div>
+  <div class="sep"></div>
+  <div class="sect">Environment</div>
+  <div class="slider"><div class="lab"><span>Tilt (head down)</span><b id="v-tilt">15°</b></div>
+    <input id="s-tilt" type="range" min="-60" max="60" value="15" step="1" /></div>
+  <div class="slider"><div class="lab"><span>Wind</span><b id="v-wind">10%</b></div>
+    <input id="s-wind" type="range" min="0" max="100" value="10" step="1" /></div>
+  <div class="slider"><div class="lab"><span>Room light</span><b id="v-room">30%</b></div>
+    <input id="s-room" type="range" min="0" max="100" value="30" step="1" /></div>
+  <div class="sep"></div>
+  <div class="row">
+    <button id="b-slow">Slow-mo<kbd>T</kbd></button>
+    <button id="b-sound" class="on">Sound<kbd>M</kbd></button>
+    <button id="b-bloom" class="on">Glow</button>
+    <button id="b-hide">Hide<kbd>H</kbd></button>
+  </div>
+</div>
+<button id="toggle-panel" class="glass" title="Show controls (H)">☰</button>
+<button id="fab-cupboard" class="glass" title="Open the cupboard">Cupboard</button>
+
+<div id="inspector" class="glass" hidden>
+  <div class="ins-head">
+    <div>
+      <div class="ins-name" id="ins-name">Item</div>
+      <div class="ins-tag" id="ins-tag"></div>
+    </div>
+    <button class="icon-btn" id="ins-close" title="Close">×</button>
+  </div>
+  <div class="ins-status" id="ins-status"></div>
+  <div class="ins-grid">
+    <span>Temperature</span><b id="ins-temp">20 °C</b>
+    <span>Mass</span><b id="ins-mass">0 g</b>
+  </div>
+  <div class="thermo"><i id="ins-bar"></i></div>
+  <p class="ins-blurb" id="ins-blurb"></p>
+  <div class="ins-actions" id="ins-actions"></div>
+</div>
+
+<div id="cupboard" hidden>
+  <div class="cab">
+    <div class="cab-top">
+      <div>
+        <h3>The cupboard</h3>
+        <p>Pick something to put on the table. Drag things around, click one to see what it is doing.</p>
+      </div>
+      <button class="icon-btn" id="cab-close" title="Close (I)">×</button>
+    </div>
+    <div class="cab-body">
+      <div class="door left"></div>
+      <div class="door right"></div>
+      <div class="shelves" id="shelves"></div>
+    </div>
+  </div>
+</div>
+
+<div id="bottom">
+  <div id="meters">
+    <div class="meter glass">Friction <div class="bar"><i id="m-heat"></i></div></div>
+    <div class="meter glass">Head wear <div class="bar wear"><i id="m-wear"></i></div></div>
+  </div>
+  <div id="hint" class="glass">Loading…</div>
+</div>
+<div id="toast" class="glass"></div>
+
+<div id="intro">
+  <div class="card glass">
+    <h2><span>MATCHBOX</span></h2>
+    <p>A 3D fire playground. Slide the box open, strike a match on the rough strip, then raid the cupboard for everyday things and see how each one meets a flame.</p>
+    <div class="keys">
+      <b>Click box</b><span>open / close the drawer</span>
+      <b>Click match</b><span>pick it up</span>
+      <b>Hold + swipe</b><span>strike on the brown strip</span>
+      <b>I</b><span>open the cupboard</span>
+      <b>Drag item</b><span>move it (scroll to lift)</span>
+      <b>Click item</b><span>inspect it and use it</span>
+      <b>B / Space</b><span>blow out / drop</span>
+      <b>Right-drag</b><span>orbit the camera</span>
+    </div>
+    <button id="start" disabled><span class="spark-dot"></span><span id="start-label">Loading physics…</span></button>
+    <p class="fine">Everything here is simulated. Please do not try any of it at home.</p>
+  </div>
+</div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
