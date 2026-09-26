@@ -177,7 +177,12 @@ function updateTarget() {
   if (!hit) return;
   // Hover the head 0.4 cm off whatever is under the pointer; holding the
   // button presses it down onto the surface (physics stops it going in).
-  const off = S.pressed && m && m.state === 'held' ? -0.15 : 0.4;
+  // A lit match pointed at a cupboard item is held with its flame licking
+  // the surface, the way you would hold a match to paper or cloth.
+  const pressing = S.pressed && m && m.state === 'held';
+  const licking = !pressing && m && m.state === 'held' && m.lit && hit.owner?.kind === 'item';
+  if (licking) { S.assist = 'touch'; S.assistItem = hit.owner; }
+  const off = pressing ? -0.15 : licking ? 0.05 : 0.4;
   const target = hit.point.clone().addScaledVector(hit.normal, off);
   if (off > 0) target.y = Math.max(target.y, hit.point.y + off);
   const dir = stickDir(_v1, false);
