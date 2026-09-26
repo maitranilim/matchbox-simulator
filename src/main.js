@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import './style.css';
-import { applyRoomLight, camera, controls, homeCameraPosition, render, resize } from './core/stage.js';
+import { applyRoomLight, camera, controls, homeCameraPosition, render, renderer, resize, scene } from './core/stage.js';
 import { CANDLE_HOME, S } from './core/state.js';
 import { $, clamp, damp, ease, noise1, toast, tween, updateTweens } from './core/util.js';
 import { initPhysics, onImpact, stepPhysics, overlaps, allBodies, world as physicsWorld } from './physics/physics.js';
@@ -12,7 +12,8 @@ import { initTablePhysics, clearScorches } from './world/table.js';
 import { initMatchboxPhysics, onDrawerClosed, renewStrip, setDrawer, updateMatchbox } from './world/matchbox.js';
 import { inBox, refillBox } from './world/match.js';
 import { Candle } from './world/candle.js';
-import { catalogById } from './items/catalog.js';
+import { CATALOG, catalogById } from './items/catalog.js';
+import { Item } from './items/item.js';
 import { clearItems, spawnItem } from './items/spawn.js';
 import { clouds, puddles, updateGasAndDust } from './items/effects.js';
 import { dropHeld, strikeMatch, updateHand, updateHandControls } from './interaction/hand.js';
@@ -77,16 +78,21 @@ actions.cleanUp = () => {
   clearItems();
   clearScorches();
   renewStrip();
-  homeCandle.extinguish();
   homeCandle.reset(2.3);
+  putCandleBack();
+  select(null);
+  toast('Table cleaned, striker renewed, fresh candle.');
+};
+
+/** Stand the table's own candle back in its place, unlit. */
+function putCandleBack() {
+  homeCandle.extinguish();
   homeCandle.group.position.copy(CANDLE_HOME);
   homeCandle.group.quaternion.identity();
   homeCandle.phys.syncFromObject();
   homeCandle.phys.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
   homeCandle.phys.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
-  select(null);
-  toast('Table cleaned, striker renewed, fresh candle.');
-};
+}
 
 onDrawerClosed(() => {
   let any = false;
@@ -142,7 +148,10 @@ function step(dt) {
   for (const m of S.matches) m.update(sdt, t);
   for (const it of [...S.items]) {
     it.update(sdt, t);
-    if (!it.removed && it.group.position.y < -30) it.remove();
+    if (it.removed || it.group.position.y >= -30) continue;
+    // Knocked off the table. The table's own candle comes back (the rest of
+    // the app relies on it); cupboard things go back in the cupboard.
+    if (it === homeCandle) { putCandleBack(); toast('The candle fell off the table, so it is back in its holder.'); } else it.remove();
   }
   for (const p of [...puddles]) p.update(sdt, t);
   updateFlames(sdt, t);
@@ -164,6 +173,25 @@ function frame(now) {
 // ---------------------------------------------------------------------------
 // Boot
 
+/**
+ * Compile every cupboard item's shaders while the intro is up. Otherwise the
+ * first time each kind of item comes out of the cupboard, the frame stalls
+ * while the GPU builds its burn shader. The throwaway copies are never
+ * rendered, and their materials are kept (not disposed) so the compiled
+ * programs stay cached.
+ */
+function warmShaders() {
+  const warm = new THREE.Group();
+  for (const def of CATALOG) if (!def.custom) warm.add(new Item(def).group);
+  warm.position.copy(controls.target);
+  scene.add(warm);
+  // Without parallel compiling (Safari), compile in one go now, behind the
+  // intro, rather than a stall per item later.
+  if (!renderer.extensions.has('KHR_parallel_shader_compile')) { renderer.compile(scene, camera); scene.remove(warm); return; }
+  const done = () => scene.remove(warm);
+  renderer.compileAsync(scene, camera).then(done, done);
+}
+
 async function boot() {
   resize();
   applyRoomLight();
@@ -174,6 +202,7 @@ async function boot() {
   $('start-label').textContent = 'Light it up';
   $('start').disabled = false;
   $('hint').textContent = 'Ready.';
+  warmShaders();
   requestAnimationFrame(frame);
 
   $('start').onclick = () => {
@@ -208,6 +237,7 @@ window.__sim = {
   resume() { paused = false; },
   spawn: spawnItem,
   camera,
+  controls,
   THREE,
   get candle() { return homeCandle; },
   /** Skip the intro: jump the camera home and hand over controls. */

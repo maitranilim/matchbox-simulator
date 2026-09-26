@@ -96,14 +96,41 @@ export function grain(ctx, w, h, amount = 12) {
 
 export const $ = (id) => document.getElementById(id);
 
+// Messages queue up so each one stays on screen long enough to read: when
+// two things happen in the same instant (water hits a pan fire and the
+// burner under it), the second no longer wipes out the first.
+const TOAST_READ_MS = 1600;
+const toastQueue = [];
 let toastTimer = 0;
+let toastWait = 0;
+let toastShownAt = -Infinity;
+let toastShown = '';
+
 export function toast(msg, ms = 2800) {
+  if (!$('toast')) return;
+  if (msg === toastShown && performance.now() - toastShownAt < TOAST_READ_MS) return;
+  if (toastQueue.some((q) => q[0] === msg)) return;
+  toastQueue.push([msg, ms]);
+  if (toastQueue.length > 3) toastQueue.shift();
+  pumpToasts();
+}
+
+function pumpToasts() {
+  if (toastWait || !toastQueue.length) return;
+  const wait = toastShownAt + TOAST_READ_MS - performance.now();
+  if (wait > 0) {
+    toastWait = setTimeout(() => { toastWait = 0; pumpToasts(); }, wait);
+    return;
+  }
+  const [msg, ms] = toastQueue.shift();
   const el = $('toast');
-  if (!el) return;
   el.textContent = msg;
   el.classList.add('show');
+  toastShown = msg;
+  toastShownAt = performance.now();
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+  pumpToasts();
 }
 
 // Scratch vectors. Only use within a single synchronous block.

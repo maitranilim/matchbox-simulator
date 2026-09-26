@@ -162,4 +162,19 @@
 #fab-cupboard { display: none; }
 @media (max-width: 720px) {
   #fab-cupboard { display: block; position: fixed; right: 10px; bottom: 156px; height: 38px; padding: 0 14px; font-size: 13px; color: #ffcf9a; }
+  /* The inspector fills the bottom of a phone screen and would sit on top of these. */
+  body.inspecting #fab-cupboard, body.inspecting #panel ~ #toggle-panel { display: none; }
+  /* Below the stats, not on top of them. */
+  #toast { top: 124px; max-width: calc(100vw - 24px); }
+}
+
+/* Phones held sideways: short screens. Keep the panel and inspector inside
+   the screen (scrolling if needed) and the hint clear of both. */
+@media (max-height: 500px) and (min-width: 721px) {
+  #panel { top: 10px; right: 10px; max-height: calc(100vh - 20px); overflow-y: auto; }
+  #inspector { top: 10px; left: 10px; bottom: auto; max-height: calc(100vh - 20px); overflow-y: auto; z-index: 4; }
+  #bottom { bottom: 10px; max-width: calc(100vw - 600px); }
+  #hint { font-size: 12px; padding: 7px 12px; }
+  body.inspecting #hud { display: none; }
+  #toast { top: 10px; max-width: calc(100vw - 580px); }
 }
