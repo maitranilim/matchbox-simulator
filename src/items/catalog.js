@@ -151,7 +151,14 @@ export const CATALOG = [
       const [m, u] = burnMat({ map: TX.plaid(), roughness: 1, side: THREE.DoubleSide }, { dissolve: true, ashW: 0.7, noise: 0.8, charColor: [0.05, 0.04, 0.035] });
       return {
         meshes: [new THREE.Mesh(geo, m)],
-        shapes: [{ type: 'hull', points: hullPoints(geo, 300) }],
+        // Stepped pads that follow the crumple (outer rim low, middle
+        // heaped up). A convex hull of the cloth was a lens with a thin rim,
+        // and a stick it landed on edge-first went straight through it.
+        shapes: [
+          { type: 'box', hx: 4.4, hy: 0.38, hz: 4.4, pos: [0, 0.43, 0] },
+          { type: 'box', hx: 3, hy: 0.6, hz: 3, pos: [0, 0.65, 0] },
+          { type: 'box', hx: 2, hy: 0.85, hz: 2, pos: [0, 0.9, 0] },
+        ],
         nodes: grid(3, 3, 5.5, 5.5, 1.2),
         spacing: 2.75,
         burnUniforms: [u],
@@ -355,9 +362,12 @@ export const CATALOG = [
         run(item) {
           const from = worldPoint(item, 1.6, 13.6, 0);
           const to = aim(item, from, 45);
+          // Tilt the can at the flame (within what a hand can do), so a
+          // candle on the table below the nozzle is still in the jet.
           const dir = to.clone().sub(from);
-          dir.y = Math.max(-0.2, Math.min(0.3, dir.y / Math.max(1, dir.length())));
-          dir.setY(dir.y * dir.length()).normalize();
+          const flat = Math.max(1, Math.hypot(dir.x, dir.z));
+          dir.y = clamp(dir.y / flat, -1.5, 0.4) * flat;
+          dir.normalize();
           sprayGas(from, dir, { owner: item, count: 90, duration: 1.2 });
           item.fill = Math.max(0, item.fill - 0.06);
           const has = fire.nearest(from, 45, (s) => s.owner !== item);

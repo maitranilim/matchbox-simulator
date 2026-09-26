@@ -20,7 +20,8 @@ export const actions = { blow() {}, refill() {}, cleanUp() {} };
 // ---------------------------------------------------------------------------
 // Cupboard
 
-const CUPBOARD_HINT = matchMedia('(pointer: coarse)').matches ? 'tap <em>Cupboard</em> for more things to burn' : '<em>I</em> opens the cupboard';
+const TOUCH = matchMedia('(pointer: coarse)').matches;
+const CUPBOARD_HINT = TOUCH ? 'tap <em>Cupboard</em> for more things to burn' : '<em>I</em> opens the cupboard';
 const thumbs = new Map();
 
 /** Render a small picture of every cupboard item once, offscreen. */
@@ -123,6 +124,7 @@ let actionKey = '';
 export function select(item) {
   S.selected = item;
   const el = $('inspector');
+  document.body.classList.toggle('inspecting', !!item);
   if (!item) { el.hidden = true; return; }
   el.hidden = false;
   const def = item.def ?? catalogById[item.id];
@@ -208,15 +210,18 @@ export function updateUI(dt) {
     if (m.state === 'lifting') hint = 'Picking up…';
     else if (m.lit && S.assist === 'wick') hint = 'Holding the flame to the wick…';
     else if (m.lit && S.assist === 'burner') hint = 'Holding the flame to the burner…';
+    else if (m.lit && S.assist === 'touch') hint = `Holding the flame to the ${S.assistItem.name.toLowerCase()}…` + (S.pointerType === 'touch' ? '' : ' <em>hold the button</em> to press it in · <em>Space</em> drop');
     else if (m.lit) hint = 'Burning! Point at a wick, a burner or anything flammable · <em>scroll</em> to tilt · <em>B</em> blow · <em>Space</em> drop';
     else if (m.headState === 'crumbled') hint = 'The head crumbled. Press <em>Space</em> to drop it';
     else if (m.headState === 'fresh') hint = S.pointerType === 'touch' ? 'Touch the brown strip and <em>swipe</em> across it to strike, or tap <em>Strike</em>' : 'Hold the mouse on the brown strip and <em>swipe</em> across it to strike, or press <em>S</em>';
     else if (S.assist === 'flame') hint = 'Relighting it in the flame…';
     else hint = m.burn < MATCH.len - 0.8 ? 'Spent. Relight it in another flame, or press <em>Space</em> to drop it' : 'Burnt out. Press <em>Space</em> to drop it';
   } else {
-    if (S.drawerOpen < 0.5) hint = fresh ? `Click the matchbox to slide the drawer open <em>(or press N)</em> · ${CUPBOARD_HINT}` : 'Box is empty. Press <em>R</em> to refill';
-    else hint = fresh ? `Click a match to pick it up · ${CUPBOARD_HINT}` : 'No fresh matches. Press <em>R</em> to refill';
-    if (inBox().some((x) => x.lit)) hint = 'The box is on fire! Click the box to <em>close the drawer</em> and smother it, or press <em>B</em>';
+    const touch = S.pointerType === 'touch' || TOUCH;
+    const click = touch ? 'Tap' : 'Click';
+    if (S.drawerOpen < 0.5) hint = fresh ? `${click} the matchbox to slide the drawer open${touch ? '' : ' <em>(or press N)</em>'} · ${CUPBOARD_HINT}` : touch ? 'Box is empty. Tap <em>Refill</em> in the menu' : 'Box is empty. Press <em>R</em> to refill';
+    else hint = fresh ? `${click} a match to pick it up · ${CUPBOARD_HINT}` : touch ? 'No fresh matches. Tap <em>Refill</em> in the menu' : 'No fresh matches. Press <em>R</em> to refill';
+    if (inBox().some((x) => x.lit)) hint = `The box is on fire! ${click} the box to <em>close the drawer</em> and smother it${touch ? '' : ', or press <em>B</em>'}`;
   }
   if (hint !== lastHint) { $('hint').innerHTML = hint; lastHint = hint; }
   const striking = m && m.state === 'held' && m.headState === 'fresh' && !m.lit;
